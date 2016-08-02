@@ -1,0 +1,6 @@
+[package]
+name = "rustyBattleLineAI"
+version = "0.1.0"
+authors = ["Don Pollitz <chaos2007@gmail.com>"]
+
+[dependencies]
