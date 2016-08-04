@@ -4,6 +4,6 @@ version = "0.1.0"
 authors = ["Don Pollitz <chaos2007@gmail.com>"]
 
 [dependencies]
-#rusty_battleline_interface = { git = "https://dmp140@bitbucket.org/dmp140/rusty_battleline_interface.git" }
+rusty_battleline_interface = { git = "https://dmp140@bitbucket.org/dmp140/rusty_battleline_interface.git"}
 regex = "0.1"
 
