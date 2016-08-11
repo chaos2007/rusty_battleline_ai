@@ -56,7 +56,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "rusty_battleline_interface"
 version = "0.1.0"
-source = "git+https://dmp140@bitbucket.org/dmp140/rusty_battleline_interface.git#eb6f7c9e56ad6edfcefe5e796a2287c4e6c747e6"
+source = "git+https://dmp140@bitbucket.org/dmp140/rusty_battleline_interface.git#c296414d8a7d8aa975edb8651e6d029f714e79b6"
 dependencies = [
  "regex 0.1.73 (registry+https://github.com/rust-lang/crates.io-index)",
 ]

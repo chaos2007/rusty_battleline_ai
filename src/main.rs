@@ -8,17 +8,20 @@ impl rbi::game_state::AiInterface for Ai {
     fn update_game_state(&self, state: &rbi::game_state::GameState) -> String {
         return String::from("play 1 red,1");
     }
-    
+
     fn get_bot_name(&self) -> String {
         return String::from("rusty_battleline_bot");
     }
 }
 
 fn main() {
-    let handler:rbi::game_state::GameHandler = Default::default();
-    let ai = Ai{}; 
+    let mut handler: rbi::game_state::GameHandler = Default::default();
+    let ai = Ai {};
     loop {
-        handler.run_one_round(&ai);
+        let mut message = String::new();
+        io::stdin()
+            .read_line(&mut message)
+            .expect("failed to read line");
+        handler.run_one_round(&ai, message);
     }
 }
-
