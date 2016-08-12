@@ -6,6 +6,23 @@ struct Ai {
 
 impl rbi::game_state::AiInterface for Ai {
     fn update_game_state(&self, state: &rbi::game_state::GameState) -> String {
+        let mut my_cards = state.player_hand.clone();
+        let mut claims = state.claim_status.clone();
+        claims.reverse();
+        my_cards.sort_by_key(|k| k.number);
+        for (x, claimed) in claims.iter().enumerate() {
+            match *claimed {
+                rbi::message_parsing::ClaimStatus::Unclaimed => {
+                    match my_cards.last() {
+                        Some(card) => {
+                            return format!("play {} {},{}", x, card.color, card.number);
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+        }
         return String::from("play 1 red,1");
     }
 
