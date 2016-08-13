@@ -31,7 +31,7 @@ impl rbi::game_state::AiInterface for Ai {
     }
 
     fn get_bot_name(&self) -> String {
-        return String::from("rusty_battleline_bot_wip");
+        return String::from("rusty_battleline_bot");
     }
 }
 
