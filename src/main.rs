@@ -12,7 +12,7 @@ impl rbi::game_state::AiInterface for Ai {
         //claims.reverse();
         my_flags.reverse();
         my_cards.sort_by_key(|k| k.number);
-        for (x, claimed) in claims.iter().enumerate() {
+        for (x, claimed) in claims.iter().enumerate().rev() {
             if (my_flags[x].len() <= 3) {
                 match *claimed {
                     rbi::message_parsing::ClaimStatus::Unclaimed => {
@@ -67,5 +67,12 @@ mod test_game_state {
                                        mp::Card{color:String::from("c"), number:3}];
         let response = ai.update_game_state(&(state.state));
         assert_eq!("play 9 b,10", response);
+        state.state.player_hand = vec![mp::Card{color:String::from("a"), number:7},
+                                       mp::Card{color:String::from("c"), number:3}];
+        let response = ai.update_game_state(&(state.state));
+        assert_eq!("play 9 a,7", response);
+        state.state.player_hand = vec![mp::Card{color:String::from("c"), number:3}];
+        let response = ai.update_game_state(&(state.state));
+        assert_eq!("play 9 c,3", response);
     }
 }
