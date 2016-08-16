@@ -55,26 +55,28 @@ fn check_for_battalion(hand: Vec<rbi::message_parsing::Card>,
     let hand = hand.clone();
     let flag_cards = flag_cards.clone();
     let colors = colors.clone();
-    for color in &colors {
+    for color_string in &colors {
         let mut num = 0;
         let mut tempCard:Option<rbi::message_parsing::Card> = None;
         for x in &hand {
             match x {
-                &rbi::message_parsing::Card{color:colora,number:numbera}=> {
+                &rbi::message_parsing::Card{ref color,number} if color_string == color => {
                     num += 1;
-                    match &tempCard {
-                        &Some(rbi::message_parsing::Card{color:colorb, number:numberb}) => {
-                            tempCard = Some(rbi::message_parsing::Card {color:colorb, number:numberb}) 
+                    tempCard = match tempCard {
+                        Some(rbi::message_parsing::Card{color:ref colora, number:numbera}) => {
+                            Some(rbi::message_parsing::Card {color:(*colora).clone(), number:numbera}) 
                         },
                         _ => {
+                            Some(x.clone()) 
                         }
                     }
-                }
+                },
+                _ => {}
             }
         }
         for x in flag_cards.clone(){
             match x {
-                rbi::message_parsing::Card{color:color,..} => {
+                rbi::message_parsing::Card{color:color_string,..} => {
                     num += 1;
                 }
             }
