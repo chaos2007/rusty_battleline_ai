@@ -1,5 +1,7 @@
 extern crate rusty_battleline_interface as rbi;
 use std::io;
+use std::io::prelude::*;
+use std::fs::File;
 
 struct Ai {
 }
@@ -12,7 +14,7 @@ impl rbi::game_state::AiInterface for Ai {
         let mut my_flags = state.player_side.clone();
         let mut colors = state.colors.clone();
         // claims.reverse();
-        my_flags.reverse();
+        // :wmy_flags.reverse();
         my_cards.sort_by_key(|k| k.number);
         for (x, claimed) in claims.iter().enumerate() {
             if my_flags[x].len() <= 3 {
@@ -50,19 +52,28 @@ impl rbi::game_state::AiInterface for Ai {
     }
 
     fn get_bot_name(&self) -> String {
-        return String::from("rusty_battleline_bot_wip");
+        return String::from("rusty_battleline_bot");
     }
 }
 
 fn main() {
     let mut handler: rbi::game_state::GameHandler = Default::default();
     let ai = Ai {};
+    let mut f = File::create("debug.txt").unwrap();
+    f.write_all(b"======Start Log=======\n");
+    f.sync_all();
     loop {
         let mut message = String::new();
         io::stdin()
             .read_line(&mut message)
             .expect("failed to read line");
         handler.run_one_round(&ai, message);
+        f.write_fmt(format_args!("PlayerHand: {:?}\nPlayerFlags: {:?}\nopponentFlags: {:?}\n",
+                                 handler.state.player_hand,
+                                 handler.state.player_side,
+                                 handler.state.opponent_side));
+        f.write_all(b"=====================================================================\n");
+        f.flush();
     }
 }
 
@@ -71,31 +82,31 @@ fn check_for_battalion(hand: &Vec<rbi::message_parsing::Card>,
                        colors_vec: &Vec<rbi::message_parsing::Color>)
                        -> (bool, rbi::message_parsing::Card) {
     let mut card: Option<rbi::message_parsing::Card> = None;
-    let hand = hand.clone();
-    let flag_cards = flag_cards.clone();
     for color_string in colors_vec {
         let mut num = 0;
         let mut tempCard: Option<rbi::message_parsing::Card> = None;
-        for x in &hand {
+        for x in hand {
             match x {
-                &rbi::message_parsing::Card { ref color, number } if color_string == color => {
+                &rbi::message_parsing::Card { color, number } if *color_string == color => {
                     num += 1;
                     tempCard = match tempCard {
-                        Some(rbi::message_parsing::Card { color: ref colora, number: numbera }) => {
+                        Some(rbi::message_parsing::Card { number: numbera, .. }) if number >
+                                                                                    numbera => {
                             Some(rbi::message_parsing::Card {
-                                color: (*colora).clone(),
-                                number: numbera,
+                                color: color,
+                                number: number,
                             })
                         }
+                        Some(card) => Some(card),
                         _ => Some(x.clone()),
                     }
                 }
                 _ => {}
             }
         }
-        for x in flag_cards.clone() {
+        for x in flag_cards {
             match x {
-                rbi::message_parsing::Card { ref color, .. } if color_string == color => {
+                &rbi::message_parsing::Card { ref color, .. } if color_string == color => {
                     num += 1;
                 }
                 _ => {}
@@ -141,6 +152,10 @@ mod test_game_state {
                             number: 7,
                         },
                         mp::Card {
+                            color: mp::Color::Color2,
+                            number: 8,
+                        },
+                        mp::Card {
                             color: mp::Color::Color1,
                             number: 1,
                         }];
@@ -156,6 +171,55 @@ mod test_game_state {
                    },
                    y);
     }
+    #[test]
+    fn verify_battalion_3() {
+        let hand = vec![mp::Card {
+                            color: mp::Color::Color1,
+                            number: 4,
+                        },
+                        mp::Card {
+                            color: mp::Color::Color2,
+                            number: 5,
+                        },
+                        mp::Card {
+                            color: mp::Color::Color3,
+                            number: 1,
+                        },
+                        mp::Card {
+                            color: mp::Color::Color4,
+                            number: 10,
+                        },
+                        mp::Card {
+                            color: mp::Color::Color1,
+                            number: 2,
+                        },
+                        mp::Card {
+                            color: mp::Color::Color5,
+                            number: 7,
+                        },
+                        mp::Card {
+                            color: mp::Color::Color3,
+                            number: 7,
+                        }];
+        let flag = vec![mp::Card {
+                            color: mp::Color::Color3,
+                            number: 9,
+                        }];
+        let (x, y) = super::check_for_battalion(&hand, &flag, &get_colors());
+        assert!(x);
+        assert_eq!(mp::Card {
+                       color: mp::Color::Color3,
+                       number: 7,
+                   },
+                   y);
+        let flag = vec![mp::Card {
+                            color: mp::Color::Color2,
+                            number: 10,
+                        }];
+        let (x, y) = super::check_for_battalion(&hand, &flag, &get_colors());
+        assert!(!x);
+    }
+
 
     #[test]
     fn verify_battalion_2() {
