@@ -17,7 +17,8 @@ impl rbi::game_state::AiInterface for Ai {
         let functions: Vec<fn(&Vec<rbi::message_parsing::Card>,
                               &Vec<rbi::message_parsing::Card>,
                               &Vec<rbi::message_parsing::Color>)
-                              -> (bool, rbi::message_parsing::Card)> = vec![check_for_phalanx,
+                              -> (bool, rbi::message_parsing::Card)> = vec![check_for_wedge,
+                                                                            check_for_phalanx,
                                                                             check_for_battalion];
         for function in functions {
             for (x, claimed) in claims.iter().enumerate() {
@@ -176,6 +177,71 @@ fn check_for_battalion(hand: &Vec<rbi::message_parsing::Card>,
             0
         } else {
             phalanx_flag_nums + num
+        };
+        if num >= 3 && tempCard != None {
+            card = tempCard;
+        }
+    }
+    match card {
+        Some(ref x) => return (true, x.clone()),
+        _ => {
+            return (false,
+                    rbi::message_parsing::Card {
+                color: rbi::message_parsing::Color::Color1,
+                number: 1,
+            })
+        }
+    }
+}
+
+fn check_for_wedge(hand: &Vec<rbi::message_parsing::Card>,
+                   flag_cards: &Vec<rbi::message_parsing::Card>,
+                   colors_vec: &Vec<rbi::message_parsing::Color>)
+                   -> (bool, rbi::message_parsing::Card) {
+    let mut card: Option<rbi::message_parsing::Card> = None;
+    let mut a = hand.clone();
+    let mut b = flag_cards.clone();a.append(&mut b);
+    for card_hand in &a {
+        let mut num = 1;
+        let mut tempCard: Option<rbi::message_parsing::Card> = None;
+        let lower_num = card_hand.number - 1;
+        let higher_num = card_hand.number + 1;
+        let color_card = card_hand.color;
+        for another_card_hand in hand {
+            if card_hand == another_card_hand {
+                continue;
+            }
+            match another_card_hand {
+                &rbi::message_parsing::Card { color, number } if (lower_num == number ||
+                                                                  higher_num == number) &&
+                                                                 color == color_card => {
+                    num += 1;
+                    tempCard = match tempCard {
+                        Some(card) => Some(card),
+                        _ => Some(another_card_hand.clone()),
+                    }
+                }
+                _ => {}
+            }
+        }
+        let mut wedge_flag_nums = 0;
+        for another_card_hand in flag_cards {
+            if card_hand == another_card_hand {
+                continue;
+            }
+            match another_card_hand {
+                &rbi::message_parsing::Card { color, number } if (lower_num == number ||
+                                                                  higher_num == number) &&
+                                                                 color == color_card => {
+                    wedge_flag_nums += 1;
+                }
+                _ => {}
+            }
+        }
+        num = if flag_cards.len() != wedge_flag_nums {
+            0
+        } else {
+            wedge_flag_nums + num
         };
         if num >= 3 && tempCard != None {
             card = tempCard;
@@ -362,5 +428,27 @@ mod test_game_state {
                         }];
         let (x, _) = super::check_for_phalanx(&hand, &flag, &get_colors());
         assert!(!x);
+    }
+
+    #[test]
+    fn verify_wedge() {
+        let hand = vec![mp::Card {
+                            color: mp::Color::Color1,
+                            number: 5,
+                        },
+                        mp::Card {
+                            color: mp::Color::Color1,
+                            number: 6,
+                        },
+                        mp::Card {
+                            color: mp::Color::Color2,
+                            number: 1,
+                        }];
+        let flag = vec![mp::Card {
+                            color: mp::Color::Color1,
+                            number: 4,
+                        }];
+        let (x, _) = super::check_for_wedge(&hand, &flag, &get_colors());
+        assert!(x);
     }
 }
