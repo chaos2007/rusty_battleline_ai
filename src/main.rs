@@ -14,35 +14,29 @@ impl rbi::game_state::AiInterface for Ai {
         let mut my_flags = state.player_side.clone();
         let mut colors = state.colors.clone();
         my_cards.sort_by_key(|k| k.number);
-        for (x, claimed) in claims.iter().enumerate() {
-            if my_flags[x].len() <= 3 {
-                match *claimed {
-                    rbi::message_parsing::ClaimStatus::Unclaimed => {
-                        match check_for_phalanx(&my_cards, &my_flags[x], &state.colors_vec) {
-                            (true, card) => {
-                                let color_string = state.string_from_color(card.color);
-                                return format!("play {} {},{}", x + 1, color_string, card.number);
+        let functions: Vec<fn(&Vec<rbi::message_parsing::Card>,
+                              &Vec<rbi::message_parsing::Card>,
+                              &Vec<rbi::message_parsing::Color>)
+                              -> (bool, rbi::message_parsing::Card)> = vec![check_for_phalanx,
+                                                                            check_for_battalion];
+        for function in functions {
+            for (x, claimed) in claims.iter().enumerate() {
+                if my_flags[x].len() <= 3 {
+                    match *claimed {
+                        rbi::message_parsing::ClaimStatus::Unclaimed => {
+                            match function(&my_cards, &my_flags[x], &state.colors_vec) {
+                                (true, card) => {
+                                    let color_string = state.string_from_color(card.color);
+                                    return format!("play {} {},{}",
+                                                   x + 1,
+                                                   color_string,
+                                                   card.number);
+                                }
+                                _ => {}
                             }
-                            _ => {}
                         }
+                        _ => {}
                     }
-                    _ => {}
-                }
-            }
-        }
-        for (x, claimed) in claims.iter().enumerate() {
-            if my_flags[x].len() <= 3 {
-                match *claimed {
-                    rbi::message_parsing::ClaimStatus::Unclaimed => {
-                        match check_for_battalion(&my_cards, &my_flags[x], &state.colors_vec) {
-                            (true, card) => {
-                                let color_string = state.string_from_color(card.color);
-                                return format!("play {} {},{}", x + 1, color_string, card.number);
-                            }
-                            _ => {}
-                        }
-                    }
-                    _ => {}
                 }
             }
         }
@@ -66,35 +60,35 @@ impl rbi::game_state::AiInterface for Ai {
     }
 
     fn get_bot_name(&self) -> String {
-        return String::from("rusty_battleline_bot");
+        return String::from("rusty_battleline_bot_wip");
     }
 }
 
 fn main() {
     let mut handler: rbi::game_state::GameHandler = Default::default();
     let ai = Ai {};
-  //  let mut f = File::create("debug.txt").unwrap();
-//    f.write_all(b"======Start Log=======\n");
- //   f.sync_all();
+    //  let mut f = File::create("debug.txt").unwrap();
+    //    f.write_all(b"======Start Log=======\n");
+    //   f.sync_all();
     loop {
         let mut message = String::new();
         io::stdin()
             .read_line(&mut message)
             .expect("failed to read line");
         handler.run_one_round(&ai, message);
-  /*      f.write_fmt(format_args!("PlayerHand: {:?}\nPlayerFlags: {:?}\nopponentFlags: {:?}\n",
-                                 handler.state.player_hand,
-                                 handler.state.player_side,
-                                 handler.state.opponent_side));
-        f.write_all(b"=====================================================================\n");
-        f.flush();*/
+        // f.write_fmt(format_args!("PlayerHand: {:?}\nPlayerFlags: {:?}\nopponentFlags: {:?}\n",
+        // handler.state.player_hand,
+        // handler.state.player_side,
+        // handler.state.opponent_side));
+        // f.write_all(b"=====================================================================\n");
+        // f.flush();
     }
 }
 
 fn check_for_phalanx(hand: &Vec<rbi::message_parsing::Card>,
-                       flag_cards: &Vec<rbi::message_parsing::Card>,
-                       colors_vec: &Vec<rbi::message_parsing::Color>)
-                       -> (bool, rbi::message_parsing::Card) {
+                     flag_cards: &Vec<rbi::message_parsing::Card>,
+                     colors_vec: &Vec<rbi::message_parsing::Color>)
+                     -> (bool, rbi::message_parsing::Card) {
     let mut card: Option<rbi::message_parsing::Card> = None;
     for card_num in 1..10 {
         let mut num = 0;
@@ -120,7 +114,11 @@ fn check_for_phalanx(hand: &Vec<rbi::message_parsing::Card>,
                 _ => {}
             }
         }
-        num = if flag_cards.len() != phalanx_flag_nums { 0 } else { phalanx_flag_nums + num };
+        num = if flag_cards.len() != phalanx_flag_nums {
+            0
+        } else {
+            phalanx_flag_nums + num
+        };
         if num >= 3 && tempCard != None {
             card = tempCard;
         }
@@ -174,7 +172,11 @@ fn check_for_battalion(hand: &Vec<rbi::message_parsing::Card>,
                 _ => {}
             }
         }
-        num = if flag_cards.len() != phalanx_flag_nums { 0 } else { phalanx_flag_nums + num };
+        num = if flag_cards.len() != phalanx_flag_nums {
+            0
+        } else {
+            phalanx_flag_nums + num
+        };
         if num >= 3 && tempCard != None {
             card = tempCard;
         }
@@ -339,7 +341,7 @@ mod test_game_state {
         let response = ai.update_game_state(&(state.state));
         assert_eq!("play 9 c,3", response);
     }
-    
+
     #[test]
     fn verify_phalanx_cant_place_on_already_placed_flag() {
         let hand = vec![mp::Card {
