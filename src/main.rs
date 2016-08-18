@@ -13,9 +13,23 @@ impl rbi::game_state::AiInterface for Ai {
         let mut claims = state.claim_status.clone();
         let mut my_flags = state.player_side.clone();
         let mut colors = state.colors.clone();
-        // claims.reverse();
-        // :wmy_flags.reverse();
         my_cards.sort_by_key(|k| k.number);
+        for (x, claimed) in claims.iter().enumerate() {
+            if my_flags[x].len() <= 3 {
+                match *claimed {
+                    rbi::message_parsing::ClaimStatus::Unclaimed => {
+                        match check_for_phalanx(&my_cards, &my_flags[x], &state.colors_vec) {
+                            (true, card) => {
+                                let color_string = state.string_from_color(card.color);
+                                return format!("play {} {},{}", x + 1, color_string, card.number);
+                            }
+                            _ => {}
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
         for (x, claimed) in claims.iter().enumerate() {
             if my_flags[x].len() <= 3 {
                 match *claimed {
@@ -59,23 +73,70 @@ impl rbi::game_state::AiInterface for Ai {
 fn main() {
     let mut handler: rbi::game_state::GameHandler = Default::default();
     let ai = Ai {};
-    let mut f = File::create("debug.txt").unwrap();
-    f.write_all(b"======Start Log=======\n");
-    f.sync_all();
+  //  let mut f = File::create("debug.txt").unwrap();
+//    f.write_all(b"======Start Log=======\n");
+ //   f.sync_all();
     loop {
         let mut message = String::new();
         io::stdin()
             .read_line(&mut message)
             .expect("failed to read line");
         handler.run_one_round(&ai, message);
-        f.write_fmt(format_args!("PlayerHand: {:?}\nPlayerFlags: {:?}\nopponentFlags: {:?}\n",
+  /*      f.write_fmt(format_args!("PlayerHand: {:?}\nPlayerFlags: {:?}\nopponentFlags: {:?}\n",
                                  handler.state.player_hand,
                                  handler.state.player_side,
                                  handler.state.opponent_side));
         f.write_all(b"=====================================================================\n");
-        f.flush();
+        f.flush();*/
     }
 }
+
+fn check_for_phalanx(hand: &Vec<rbi::message_parsing::Card>,
+                       flag_cards: &Vec<rbi::message_parsing::Card>,
+                       colors_vec: &Vec<rbi::message_parsing::Color>)
+                       -> (bool, rbi::message_parsing::Card) {
+    let mut card: Option<rbi::message_parsing::Card> = None;
+    for card_num in 1..10 {
+        let mut num = 0;
+        let mut tempCard: Option<rbi::message_parsing::Card> = None;
+        for x in hand {
+            match x {
+                &rbi::message_parsing::Card { color, number } if card_num == number => {
+                    num += 1;
+                    tempCard = match tempCard {
+                        Some(card) => Some(card),
+                        _ => Some(x.clone()),
+                    }
+                }
+                _ => {}
+            }
+        }
+        let mut phalanx_flag_nums = 0;
+        for x in flag_cards {
+            match x {
+                &rbi::message_parsing::Card { color, number } if card_num == number => {
+                    phalanx_flag_nums += 1;
+                }
+                _ => {}
+            }
+        }
+        num = if flag_cards.len() != phalanx_flag_nums { 0 } else { phalanx_flag_nums + num };
+        if num >= 3 && tempCard != None {
+            card = tempCard;
+        }
+    }
+    match card {
+        Some(ref x) => return (true, x.clone()),
+        _ => {
+            return (false,
+                    rbi::message_parsing::Card {
+                color: rbi::message_parsing::Color::Color1,
+                number: 1,
+            })
+        }
+    }
+}
+
 
 fn check_for_battalion(hand: &Vec<rbi::message_parsing::Card>,
                        flag_cards: &Vec<rbi::message_parsing::Card>,
@@ -104,14 +165,16 @@ fn check_for_battalion(hand: &Vec<rbi::message_parsing::Card>,
                 _ => {}
             }
         }
+        let mut phalanx_flag_nums = 0;
         for x in flag_cards {
             match x {
                 &rbi::message_parsing::Card { ref color, .. } if color_string == color => {
-                    num += 1;
+                    phalanx_flag_nums += 1;
                 }
                 _ => {}
             }
         }
+        num = if flag_cards.len() != phalanx_flag_nums { 0 } else { phalanx_flag_nums + num };
         if num >= 3 && tempCard != None {
             card = tempCard;
         }
@@ -275,5 +338,27 @@ mod test_game_state {
                                        }];
         let response = ai.update_game_state(&(state.state));
         assert_eq!("play 9 c,3", response);
+    }
+    
+    #[test]
+    fn verify_phalanx_cant_place_on_already_placed_flag() {
+        let hand = vec![mp::Card {
+                            color: mp::Color::Color1,
+                            number: 7,
+                        },
+                        mp::Card {
+                            color: mp::Color::Color2,
+                            number: 7,
+                        },
+                        mp::Card {
+                            color: mp::Color::Color3,
+                            number: 7,
+                        }];
+        let flag = vec![mp::Card {
+                            color: mp::Color::Color1,
+                            number: 3,
+                        }];
+        let (x, _) = super::check_for_phalanx(&hand, &flag, &get_colors());
+        assert!(!x);
     }
 }
