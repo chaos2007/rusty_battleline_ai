@@ -13,8 +13,6 @@ impl rbi::game_state::AiInterface for Ai {
         let mut claims = state.claim_status.clone();
         let mut my_flags = state.player_side.clone();
         let mut colors = state.colors.clone();
-        // claims.reverse();
-        // :wmy_flags.reverse();
         my_cards.sort_by_key(|k| k.number);
         for (x, claimed) in claims.iter().enumerate() {
             if my_flags[x].len() <= 3 {
@@ -68,7 +66,7 @@ impl rbi::game_state::AiInterface for Ai {
     }
 
     fn get_bot_name(&self) -> String {
-        return String::from("rusty_battleline_bot_wip");
+        return String::from("rusty_battleline_bot");
     }
 }
 
@@ -113,14 +111,16 @@ fn check_for_phalanx(hand: &Vec<rbi::message_parsing::Card>,
                 _ => {}
             }
         }
+        let mut phalanx_flag_nums = 0;
         for x in flag_cards {
             match x {
                 &rbi::message_parsing::Card { color, number } if card_num == number => {
-                    num += 1;
+                    phalanx_flag_nums += 1;
                 }
                 _ => {}
             }
         }
+        num = if flag_cards.len() != phalanx_flag_nums { 0 } else { phalanx_flag_nums + num };
         if num >= 3 && tempCard != None {
             card = tempCard;
         }
@@ -165,14 +165,16 @@ fn check_for_battalion(hand: &Vec<rbi::message_parsing::Card>,
                 _ => {}
             }
         }
+        let mut phalanx_flag_nums = 0;
         for x in flag_cards {
             match x {
                 &rbi::message_parsing::Card { ref color, .. } if color_string == color => {
-                    num += 1;
+                    phalanx_flag_nums += 1;
                 }
                 _ => {}
             }
         }
+        num = if flag_cards.len() != phalanx_flag_nums { 0 } else { phalanx_flag_nums + num };
         if num >= 3 && tempCard != None {
             card = tempCard;
         }
@@ -336,5 +338,27 @@ mod test_game_state {
                                        }];
         let response = ai.update_game_state(&(state.state));
         assert_eq!("play 9 c,3", response);
+    }
+    
+    #[test]
+    fn verify_phalanx_cant_place_on_already_placed_flag() {
+        let hand = vec![mp::Card {
+                            color: mp::Color::Color1,
+                            number: 7,
+                        },
+                        mp::Card {
+                            color: mp::Color::Color2,
+                            number: 7,
+                        },
+                        mp::Card {
+                            color: mp::Color::Color3,
+                            number: 7,
+                        }];
+        let flag = vec![mp::Card {
+                            color: mp::Color::Color1,
+                            number: 3,
+                        }];
+        let (x, _) = super::check_for_phalanx(&hand, &flag, &get_colors());
+        assert!(!x);
     }
 }
